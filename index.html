@@ -1,0 +1,700 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#13112A"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style></head><body>
+<title>Fuga do Fórum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;600;700&family=Silkscreen&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: jogo de celular. Mapa do fórum visto de cima (6 salas + saída) com um personagem original que anda entre as salas;
+   barra de tarefas e relógio no topo; enigmas abrem num painel estilo terminal; a Dra. Ana fala por notificação e chat de WhatsApp.
+   Visual único escuro (amarelo, coral, menta e azul sobre azul-noite). */
+:root{
+  color-scheme: dark;
+  --bg:#13112A; --bg2:#0C0B1D; --card:#1F1C3C; --card2:#2B2752; --line:#3A3570;
+  --fg:#F7F3EA; --muted:#B6B0D3; --dim:#8C86AE;
+  --lemon:#FFD447; --coral:#FF7A59; --mint:#4FE0A8; --sky:#86B6FF;
+  --paper:#F8F4EA; --ink:#1B1933; --pmut:#6E6890;
+  --wa:#ECE5DD; --out:#D9FDD3; --wag:#0E6B5C;
+  --display:'Bricolage Grotesque','Arial Black',system-ui,sans-serif;
+  --body:'Instrument Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'Courier New',monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+:focus-visible{outline:3px solid var(--lemon);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+.shake{animation:shake .4s}
+@keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:14px;padding:15px 18px;font-weight:700;font-size:17px;background:var(--lemon);color:#15132B;transition:transform .12s}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:transparent;color:var(--muted);border:2px solid var(--line)}
+.link{background:none;border:0;padding:6px 0;color:var(--dim);font-size:14px;text-decoration:underline;text-underline-offset:3px}
+
+/* Tela inicial */
+.start{position:fixed;inset:0;overflow:auto;background:radial-gradient(500px 380px at 100% 0%,#2A2464 0%,transparent 70%),var(--bg)}
+.start .w{max-width:520px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 32px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+.logo{font-family:var(--display);font-weight:800;font-size:54px;line-height:.9;letter-spacing:-.04em;margin:8px 0 0}
+.logo span{color:var(--lemon);display:block}
+.kick{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--lemon);margin:0}
+.muted{color:var(--muted)}
+.field{width:100%;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:13px 15px;font-size:17px}
+.field:focus{border-color:var(--lemon);outline:none}
+.colors{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+.col{aspect-ratio:1;border-radius:50%;border:3px solid var(--bg);box-shadow:0 0 0 2px var(--line);padding:0}
+.col[aria-pressed="true"]{box-shadow:0 0 0 3px var(--lemon);transform:scale(1.08)}
+.preview{display:flex;align-items:center;gap:14px;background:var(--card);border:2px solid var(--line);border-radius:18px;padding:12px 16px}
+.preview svg{width:64px;height:88px;flex:none}
+.rules{display:grid;gap:8px;font-size:15px;color:var(--muted)}
+.rules b{color:var(--fg)}
+
+/* HUD */
+.game{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg2)}
+.hud{padding:calc(10px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 10px max(12px,env(safe-area-inset-left,0px));background:linear-gradient(180deg,#0A0918,rgba(10,9,24,.85));display:flex;flex-direction:column;gap:8px;z-index:3}
+.hrow{display:flex;align-items:center;gap:10px}
+.tasks{flex:1;height:30px;border-radius:8px;background:#1A1838;border:2px solid #3A3570;position:relative;overflow:hidden}
+.tasks i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#3FCF8E,#4FE0A8);transition:width .8s cubic-bezier(.16,1,.3,1)}
+.tasks span{position:relative;z-index:1;display:flex;height:100%;align-items:center;padding:0 10px;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.clock{font-family:var(--mono);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;background:#1A1838;border:2px solid var(--lemon);color:var(--lemon);border-radius:8px;padding:3px 9px;flex:none}
+.who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.who b{color:var(--fg)}
+.map{flex:1;position:relative;overflow:hidden;display:grid;place-items:center;padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+.map svg.m{width:100%;height:100%;max-width:560px}
+.phonebtn{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:18px;border:0;background:#25D366;color:#fff;font-size:28px;box-shadow:0 8px 20px rgba(0,0,0,.4);z-index:4}
+.phonebtn .badge{position:absolute;right:-4px;top:-4px;min-width:22px;height:22px;border-radius:11px;background:var(--coral);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;padding:0 5px}
+.hint-bar{position:absolute;left:80px;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));background:rgba(20,18,44,.92);border:2px solid var(--line);border-radius:14px;padding:10px 14px;font-size:14px;z-index:4}
+.hint-bar b{color:var(--lemon)}
+
+/* Mapa (SVG) */
+.room{cursor:pointer}
+.room .lb{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;fill:#E8E4FF;text-transform:uppercase}
+.room .lk,.room .lki{opacity:0;transition:opacity .4s}
+.room.locked .lk{opacity:.55} .room.locked .lki{opacity:.9}
+.room .hl{opacity:0}
+.room.cur .hl{opacity:1;animation:glow 1.4s ease-in-out infinite}
+@keyframes glow{50%{stroke-width:7;filter:drop-shadow(0 0 10px rgba(255,212,71,.9))}}
+.room .ok{opacity:0;transition:opacity .4s}
+.room.done .ok{opacity:1}
+.room .mark{display:none}
+.room.cur .mark{display:inline}
+.exitdoor,.exitdoor2{transition:transform .9s ease}
+.exitopen .exitdoor{transform:translateX(-26px)} .exitopen .exitdoor2{transform:translateX(26px)}
+.exitopen .signt{fill:#4FE0A8} .exitopen .sign{fill:#0E3A2C}
+
+.bang{animation:bob 1s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.corr{fill:#121630;stroke:#2B3260;stroke-width:3}
+.tile{stroke:rgba(255,255,255,.04);stroke-width:1}
+.walk .legs{animation:step .32s steps(2) infinite}
+@keyframes step{50%{transform:translateY(-2px)}}
+
+/* Painel do enigma */
+.shade{position:fixed;inset:0;background:rgba(5,4,14,.6);z-index:8;animation:fade .25s ease}
+@keyframes fade{from{opacity:0}}
+.panel{position:fixed;left:0;right:0;bottom:0;z-index:9;max-height:92vh;overflow:auto;background:linear-gradient(180deg,#1E1B3E,#16142F);border-top:3px solid var(--lemon);border-radius:22px 22px 0 0;box-shadow:0 -20px 50px rgba(0,0,0,.5);animation:up .35s cubic-bezier(.16,1,.3,1)}
+@keyframes up{from{transform:translateY(100%)}}
+.panel .w{max-width:520px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(22px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.ph{display:flex;align-items:center;gap:10px}
+.ph .tg{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;border-radius:7px;background:var(--lemon);color:#15132B}
+.ph .tg.em{background:var(--sky);color:#0E1630} .ph .tg.mx{background:var(--coral);color:#22101A}
+.ph .x{margin-left:auto;width:36px;height:36px;border-radius:10px;border:2px solid var(--line);background:transparent;font-size:18px;color:var(--muted)}
+.ptitle{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;margin:0}
+.q{margin:0;font-size:16px;color:var(--muted)}
+.q b{color:var(--fg)}
+.hintb{align-self:flex-start;background:none;border:2px dashed var(--line);color:var(--muted);border-radius:10px;padding:7px 11px;font-size:13px}
+.hint{background:#26224A;border-left:4px solid var(--sky);border-radius:10px;padding:10px 12px;font-size:14px}
+.okline{display:flex;gap:10px;align-items:center;background:#173D36;border:2px solid var(--mint);border-radius:14px;padding:12px 14px;font-weight:700;color:var(--mint);animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+
+/* cofre */
+.safe{background:linear-gradient(160deg,#4A4E5C,#2A2D36);border-radius:18px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:inset 0 0 0 4px #23262E}
+.wheels{display:flex;gap:6px;align-items:center}
+.wheel{display:flex;flex-direction:column;align-items:center;gap:4px}
+.wheel button{width:50px;height:34px;border-radius:8px;border:0;background:#151820;color:#fff;font-size:15px}
+.wheel .d{width:50px;height:60px;border-radius:10px;background:#0C0E13;border:2px solid #6A7186;display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:32px;color:var(--lemon)}
+.wsep{width:12px;height:4px;border-radius:2px;background:#6A7186}
+.safe.open{box-shadow:inset 0 0 0 4px var(--mint)}
+/* memória */
+.mem{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.card{display:block;aspect-ratio:3/4;perspective:700px;border:0;background:none;padding:0}
+.card .in{display:block;position:relative;width:100%;height:100%;transition:transform .45s cubic-bezier(.3,1.3,.5,1);transform-style:preserve-3d}
+.card.up .in,.card.ok .in{transform:rotateY(180deg)}
+.card .fc{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px;text-align:center}
+.card .back{background:#2B2752;border:2px solid #46508A;font-size:20px;background-image:linear-gradient(rgba(134,182,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(134,182,255,.08) 1px,transparent 1px);background-size:10px 10px}
+.card .front{transform:rotateY(180deg);background:var(--paper);color:var(--ink);font-size:11px;font-weight:700;line-height:1.15;border:2px solid #D9D2C2}
+.card .front span{display:block;font-size:20px}
+.card.ok .front{background:#D7F5E9;border-color:var(--mint)}
+.memi{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+/* anagrama */
+.slots{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.slot{width:30px;height:40px;border-radius:8px;border:2px dashed var(--line);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:20px;background:transparent;padding:0}
+.slot.f{border-style:solid;border-color:var(--lemon);background:var(--card2)}
+.tiles{display:flex;flex-wrap:wrap;gap:7px;justify-content:center}
+.tl{width:40px;height:48px;border-radius:10px;border:0;background:var(--paper);color:var(--ink);font-family:var(--display);font-weight:800;font-size:22px;box-shadow:0 4px 0 #C9C2B0;padding:0}
+.tl.used{visibility:hidden}
+/* impostor */
+.sent{background:var(--paper);color:var(--ink);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:4px}
+.sent .sh{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--pmut);text-transform:uppercase;padding:2px 6px}
+.ln{display:flex;gap:10px;text-align:left;width:100%;background:transparent;border:2px solid transparent;border-radius:9px;padding:8px;color:var(--ink);font-size:15.5px;line-height:1.4}
+.ln i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--pmut);padding-top:3px}
+.ln.no{border-color:var(--coral);background:#FFE3DA}
+.ln.yes{border-color:#D9442A;background:#FFD7CC;position:relative}
+.ln.yes::after{content:"SUS!";position:absolute;right:6px;top:-9px;background:#D9442A;color:#fff;font-family:var(--mono);font-weight:700;font-size:10px;padding:2px 6px;border-radius:5px}
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vbtn{border-radius:12px;border:2px solid var(--line);background:var(--card);padding:10px;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.vbtn span{font-size:20px}
+.vbtn.ok{border-color:var(--mint);background:#173D36}
+/* calendário */
+.cal{background:var(--paper);color:var(--ink);border-radius:14px;overflow:hidden}
+.cal .ch{background:#2C4A80;color:#fff;font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:9px 12px;display:flex;justify-content:space-between}
+.days{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px}
+.dayb{aspect-ratio:1;border-radius:9px;border:2px solid #D9D2C2;background:#fff;font-family:var(--display);font-weight:800;font-size:18px;color:var(--ink);position:relative;padding:0}
+.dayb.past{color:#B0A8BC}
+.dayb.past::after{content:"";position:absolute;left:20%;right:20%;top:50%;height:3px;background:#D9442A;transform:rotate(-35deg)}
+.dayb.hit{background:var(--mint);border-color:#1F8A5B}
+.dayb.miss{background:#FFD7CC;border-color:#D9442A}
+/* cartas */
+.deck{position:relative;height:230px}
+.sw{position:absolute;inset:0;border-radius:18px;background:var(--paper);color:var(--ink);padding:20px;display:flex;flex-direction:column;justify-content:center;gap:10px;box-shadow:0 14px 34px rgba(0,0,0,.45);touch-action:pan-y;user-select:none;-webkit-user-select:none;transition:transform .3s cubic-bezier(.2,1.2,.4,1)}
+.sw.drag{transition:none}
+.sw .ct{font-family:var(--display);font-weight:700;font-size:21px;line-height:1.25}
+.sw .st{position:absolute;top:12px;font-family:var(--mono);font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;opacity:0;transition:opacity .15s}
+.sw .st.l{left:12px;background:var(--sky);color:#0E1630} .sw .st.r{right:12px;background:var(--lemon);color:#15132B}
+.sw.behind{transform:scale(.95) translateY(10px);filter:brightness(.75);pointer-events:none}
+.swb{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.swb button{border-radius:12px;border:0;padding:13px 8px;font-weight:800;font-size:15px}
+.swb .l{background:var(--sky);color:#0E1630} .swb .r{background:var(--lemon);color:#15132B}
+.swc{text-align:center;font-size:13px;color:var(--muted)}
+
+/* WhatsApp: notificação e conversa */
+.notif{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:12;width:min(500px,calc(100% - 24px));background:#fff;color:#16181D;border-radius:16px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;box-shadow:0 12px 30px rgba(0,0,0,.45);animation:drop .4s cubic-bezier(.2,1.3,.4,1);cursor:pointer;border:0;text-align:left}
+@keyframes drop{from{transform:translate(-50%,-120%)}}
+.notif .ap{width:36px;height:36px;border-radius:10px;background:#25D366;display:grid;place-items:center;font-size:20px;flex:none}
+.notif b{display:block;font-size:14px}
+.notif span{font-size:14px;line-height:1.35;color:#3A3F4A}
+.notif small{display:block;font-size:11px;color:#8A8F98;text-transform:uppercase;letter-spacing:.06em}
+.chat{position:fixed;inset:0;z-index:11;display:flex;flex-direction:column;background:var(--wa);color:#16181D;animation:slidein .35s cubic-bezier(.16,1,.3,1)}
+@keyframes slidein{from{transform:translateX(100%)}}
+.chat .top{background:var(--wag);color:#fff;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;display:flex;align-items:center;gap:10px}
+.chat .top .pic{width:40px;height:40px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:22px}
+.chat .top b{display:block;font-size:16px}
+.chat .top span{font-size:12px;opacity:.85}
+.chat .top .bk{background:none;border:0;color:#fff;font-size:22px;padding:4px 8px}
+.chat .th{flex:1;overflow:auto;padding:12px max(12px,env(safe-area-inset-right,0px)) 12px max(12px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:7px}
+.msg{max-width:84%;padding:8px 12px 6px;border-radius:12px;font-size:15.5px;line-height:1.4;box-shadow:0 1px 1px rgba(0,0,0,.08);animation:min .3s ease both}
+@keyframes min{from{opacity:0;transform:translateY(6px)}}
+.msg.in{align-self:flex-start;background:#fff;border-top-left-radius:4px}
+.msg.out{align-self:flex-end;background:var(--out);border-top-right-radius:4px}
+.msg .t{display:block;text-align:right;font-size:11px;color:#8A8F98;margin-top:2px}
+.typing{align-self:flex-start;background:#fff;border-radius:12px;padding:11px 13px;display:flex;gap:4px}
+.typing i{width:7px;height:7px;border-radius:50%;background:#A3A8B0;animation:dot 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes dot{30%{transform:translateY(-4px)}}
+.chat .go{padding:10px max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));background:#F0EBE3}
+.chat .go .btn{background:var(--wag);color:#fff}
+.toast{position:fixed;left:50%;top:calc(90px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:20;background:var(--coral);color:#22101A;font-weight:700;padding:9px 14px;border-radius:10px;max-width:min(460px,calc(100% - 32px));text-align:center;font-size:14px;animation:min .2s ease}
+
+/* resultado */
+.res{position:fixed;inset:0;overflow:auto;z-index:15;background:radial-gradient(500px 400px at 50% 0%,#145A44 0%,transparent 70%),#0B1A16}
+.res .w{max-width:520px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 32px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px;text-align:center}
+.time{font-family:var(--display);font-weight:800;font-size:84px;line-height:1;color:var(--lemon);font-variant-numeric:tabular-nums}
+.rank{font-family:var(--display);font-weight:800;font-size:26px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stats div{background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);border-radius:14px;padding:10px}
+.stats b{display:block;font-family:var(--display);font-size:22px}
+.stats span{font-size:12px;color:var(--muted)}
+.ladder{display:flex;flex-direction:column;gap:5px;text-align:left}
+.ladder div{display:flex;justify-content:space-between;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.06);font-size:14px}
+.ladder div.me{background:var(--lemon);color:#15132B;font-weight:700}
+.pod{background:rgba(255,212,71,.12);border:2px solid rgba(255,212,71,.4);border-radius:14px;padding:12px;font-size:15px}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:30}
+
+/* ===== Retrô refinado: pixel nos detalhes, texto legível ===== */
+:root{--display:'Pixelify Sans','Trebuchet MS',system-ui,sans-serif;--body:'Instrument Sans','Segoe UI',system-ui,sans-serif;--mono:'Silkscreen','Courier New',monospace;--px:#07080C}
+body{font-size:15px;line-height:1.4}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,transparent 1px 3px)}
+svg.m{shape-rendering:crispEdges}
+.btn{border-radius:8px;border:2px solid var(--px);box-shadow:0 4px 0 var(--px);font-family:var(--mono);font-size:14px;letter-spacing:.02em;padding:13px 14px}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--px)}
+.btn.ghost{box-shadow:0 3px 0 var(--px)}
+.logo{font-family:var(--display);font-weight:700;font-size:40px;line-height:1;letter-spacing:0;text-shadow:3px 3px 0 var(--px)}
+.logo span{color:var(--lemon)}
+.kick{font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:.06em}
+.field{border-radius:8px;border:2px solid var(--line);font-size:17px}
+.col{border-radius:6px;border:2px solid var(--px)}
+.col[aria-pressed="true"]{outline:2px solid var(--lemon);outline-offset:2px}
+.preview{border-radius:10px;border:2px solid var(--line)}
+.preview b{font-family:var(--display);font-size:16px}
+.rules{font-size:14px}
+.tasks{border-radius:6px;border:2px solid var(--px);height:24px;background:#1A1838}
+.tasks i{background:repeating-linear-gradient(90deg,#3FCF8E 0 8px,#2FAE76 8px 10px)}
+.tasks span{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.04em}
+.clock{font-family:var(--mono);font-weight:400;font-size:14px;border-radius:6px;padding:3px 8px;box-shadow:2px 2px 0 var(--px)}
+.phonebtn{box-shadow:0 3px 0 var(--px)}
+.phonebtn .badge{font-family:var(--mono);font-size:10px}
+.hint-bar{border-radius:10px;box-shadow:3px 3px 0 var(--px)}
+.room .lb{font-family:'Silkscreen',monospace;font-weight:400;font-size:7.5px;letter-spacing:.02em}
+.panel{border-top:3px solid var(--lemon)}
+.ph .tg{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.04em;border-radius:5px}
+.ph .x{border-radius:8px}
+.ptitle{font-family:var(--display);font-weight:700;font-size:23px;line-height:1.1}
+.q{font-size:15px}
+.okline{font-family:var(--mono);font-weight:400;font-size:12px}
+.wheel .d{font-family:var(--display);font-weight:700;font-size:30px}
+.slot{font-family:var(--display);font-size:18px}
+.tl{font-family:var(--display);font-weight:700;font-size:20px;box-shadow:0 3px 0 #C9C2B0}
+.sent .sh,.ln i,.cal .ch,.sw .st,.notif small{font-family:var(--mono);font-weight:400}
+.ln.yes::after{font-family:var(--mono);font-weight:400}
+.dayb{font-family:var(--display)}
+.sw{box-shadow:5px 5px 0 var(--px)}
+.sw .ct{font-family:var(--display);font-weight:600;font-size:20px}
+.swb button{font-family:var(--mono);font-weight:400}
+.notif{box-shadow:4px 4px 0 var(--px)}
+.toast{font-family:var(--mono);font-weight:400;font-size:12px;box-shadow:3px 3px 0 var(--px)}
+.time{font-family:var(--display);font-weight:700;font-size:64px;text-shadow:4px 4px 0 #8A5B00}
+.rank{font-family:var(--display);font-weight:700;font-size:22px}
+.stats b{font-family:var(--display);font-size:22px}
+
+/* ===== Jogo da memória ===== */
+.memi{align-items:center;font-size:13px;margin-bottom:10px}
+.memi b{font-family:var(--mono);font-weight:400;font-size:11px;color:var(--lemon);letter-spacing:.04em}
+.memleg{display:flex;gap:12px;font-size:12px;color:var(--muted);margin:-2px 0 10px}
+.memleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;border:1.5px solid var(--px)}
+.mem{gap:8px}
+.card{aspect-ratio:4/5}
+.card .fc{border-radius:10px;padding:0;gap:0;overflow:hidden;justify-content:flex-start}
+.card .back{border:2px solid var(--px);box-shadow:0 3px 0 var(--px);background:#2B2752;
+  background-image:linear-gradient(45deg,#332E63 25%,transparent 25%,transparent 75%,#332E63 75%),linear-gradient(45deg,#332E63 25%,transparent 25%,transparent 75%,#332E63 75%);
+  background-size:12px 12px;background-position:0 0,6px 6px;justify-content:center}
+.card .back b{width:34px;height:34px;display:grid;place-items:center;background:var(--lemon);color:#15132B;border:2px solid var(--px);border-radius:7px;box-shadow:2px 2px 0 var(--px);font-family:var(--mono);font-size:20px;font-weight:400}
+.card .front{border:2px solid var(--px);box-shadow:0 3px 0 var(--px);background:#FFF8E7;color:#1B1933;font-family:var(--body);padding:0}
+.card .front .em{display:grid;place-items:center;width:100%;flex:0 0 46%;font-size:24px;background:#FFE7A3;border-bottom:2px solid var(--px)}
+.card.t .front{background:#EAF2FF}
+.card.t .front .em{background:#B9D3FF}
+.card .front .tx{flex:1;display:grid;place-items:center;padding:3px 4px;font-size:11px;font-weight:700;line-height:1.12;letter-spacing:-.01em;hyphens:none;overflow-wrap:normal}
+.card.ok .front{background:#D7F5E9}
+.card.ok .front .em{background:#7FE0B5}
+.card.ok .front::after{content:"✓";position:absolute;top:3px;right:4px;width:16px;height:16px;display:grid;place-items:center;background:var(--px);color:#7FE0B5;border-radius:4px;font-size:11px;font-weight:700}
+
+/* ===== WhatsApp limpo e legível (acima do efeito de TV) ===== */
+.chat{z-index:41;background:#EFE7DC;color:#111}
+.notif{z-index:42;color:#111}
+.toast{z-index:43}
+.chat .top b{font-family:var(--body);font-size:17px}
+.chat .top span{font-size:13px}
+.chat .th{gap:9px;padding-top:16px}
+.msg{font-family:var(--body);font-size:17px;line-height:1.45;color:#111;max-width:88%;padding:10px 13px 6px;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.14);border:0}
+.msg b{font-weight:700;color:#0B5E3C}
+.msg .t{font-size:11.5px;color:#6E737C}
+.notif b{font-family:var(--body);font-weight:700;font-size:15px;color:#111}
+.notif span{font-size:15px;line-height:1.4;color:#2A2E36}
+.notif small{font-size:11px;color:#6E737C;letter-spacing:.04em}
+.chat .go .btn{font-size:14px}
+</style>
+
+<div id="app"></div>
+<canvas id="fx"></canvas>
+
+<script>
+(function(){
+// ========= CONTEÚDO =========
+const COLORS=['#FFD447','#FF7A59','#4FE0A8','#86B6FF','#B98CFF','#FF8FC8','#5BE3F0','#F4F1EA'];
+const TITLES=[[180,'Ministro(a) do STJ','👑'],[240,'Desembargador(a)','🏛️'],[330,'Juiz(a)','🔨'],[420,'Advogado(a)','⚖️'],[1e9,'Estagiário(a) sobrevivente','📎']];
+const PEN_WRONG=10,PEN_HINT=30;
+// Salas: 0..5 em ordem de tarefa; posições no mapa (viewBox 360x640)
+const ROOMS=[
+ {id:'cofre',name:'Gabinete do Relator',ic:'🔐',x:6,y:428,side:'L',tg:['','Agravo interno'],title:'O cofre do relator',
+  q:'Post-it no cofre: <b>“Pra tirar uma decisão minha e levar pro grupo: __ dias. Pra me pedir que conserte um defeito: __ dias.”</b> O código são os dois prazos, em dias úteis, um depois do outro.',
+  hint:'Agravo interno: art. 1.070. Embargos de declaração: art. 1.023. Cada prazo com 2 dígitos.',
+  ana:'Abriu! 🔓 <b>15 dias úteis</b> pro agravo interno e <b>5</b> pros embargos. Agora vai pro <b>Arquivo</b>, do outro lado do corredor.'},
+ {id:'memoria',name:'Arquivo',ic:'🗄️',x:208,y:428,side:'R',tg:['mx','Memória'],title:'Jogo da memória',
+  q:'As fichas do arquivo caíram e misturaram tudo. Vire de duas em duas e junte cada cena com o seu nome técnico.',
+  hint:'São 6 pares: 4 cenas dos defeitos (Cálice, Calcinha Preta, iFood, Oscar) e 2 do grupo do trabalho.',
+  ana:'Memória de jurista! 🧠 Os 4 defeitos dos embargos e o agravo interno no lugar. Sobe pra <b>Biblioteca</b>.'},
+ {id:'palavra',name:'Biblioteca',ic:'📚',x:6,y:250,side:'L',tg:['','Agravo interno'],title:'A palavra embaralhada',
+  q:'No agravo interno não basta dizer “discordo”. Tem que rebater <b>cada fundamento</b> da decisão. Monte o nome disso:',
+  hint:'Começa com D e termina com DADE. Art. 1.021, §1º.',
+  ana:'Isso! <b>Dialeticidade</b> (art. 1.021, §1º). Corre pro <b>Cartório</b>, que tem sentença com defeito lá. 🕵️'},
+ {id:'impostor',name:'Cartório',ic:'🕵️',x:208,y:250,side:'R',tg:['em','Embargos'],title:'A frase impostora',
+  q:'Essa sentença saiu com defeito. Toque na frase <b>impostora</b> e diga qual é o defeito.',
+  hint:'Uma frase briga com outra. Vibes de Calcinha Preta. 🎵',
+  ana:'Pegou o impostor! Reconhecer o abuso e negar a devolução é <b>contradição</b> (art. 1.022, I). Próxima: <b>Sala do Relógio</b>. ⏳'},
+ {id:'calendario',name:'Sala do Relógio',ic:'⏰',x:6,y:72,side:'L',tg:['em','Prazo'],title:'Pause ou restart?',
+  q:'Seu prazo para apelar é de 15 dias úteis. <b>Já correram 4</b> (riscados). Aí você opôs embargos de declaração, e eles foram julgados hoje. <b>Toque no dia em que sua contagem recomeça.</b>',
+  hint:'Art. 1.026: os embargos INTERROMPEM o prazo. Interromper é restart, não pause.',
+  ana:'Restart! Os embargos <b>interrompem</b> o prazo, que recomeça do dia 1 (art. 1.026). Última tarefa: <b>Plenário</b>! 🏛️'},
+ {id:'cartas',name:'Plenário',ic:'🏛️',x:208,y:72,side:'R',tg:['mx','Final'],title:'Embarga ou agrava?',
+  q:'Arraste a carta: <b>⬅ Embargos</b> ou <b>Agravo interno ➡</b>. Acerte todas para destrancar a saída.',
+  hint:'Decisão de um só no tribunal que você quer que o grupo reveja: agravo. Decisão com defeito (de qualquer um!): embargos.',
+  ana:'A PORTA DE SAÍDA ABRIU!!! 🚪✨ Corre lá pra cima e escapa!'}
+];
+const MEM=[['🍷','“Cálice” ou “cale-se”?'],['🌫️','Obscuridade'],['🎵','“Você não vale nada”'],['🔀','Contradição'],['🥤','iFood sem o refri'],['🧩','Omissão'],['✉️','Envelope errado no Oscar'],['✏️','Erro material'],['👑','Líder decidiu sozinho'],['🧑‍⚖️','Decisão monocrática'],['🗳️','“Bora votar no grupo?”'],['⚖️','Agravo interno']];
+const LINES=['Trata-se de ação movida por Maria contra o Banco X por cobranças indevidas.','Ficou provado que as cobranças foram feitas sem contrato.','Reconheço, portanto, que a cobrança foi abusiva.','Ante o exposto, JULGO IMPROCEDENTE o pedido de devolução dos valores.'];
+const VICES=[['🌫️','Obscuridade'],['🔀','Contradição'],['🧩','Omissão'],['✏️','Erro material']];
+const CARDS=[['O relator decidiu sozinho, com uma súmula que não tem nada a ver com o caso.','R'],['A sentença trocou o nome do autor.','L'],['A decisão monocrática do relator tem uma contradição.','L'],['O presidente do tribunal negou o REsp com base em tese de repetitivo.','R'],['O acórdão esqueceu de analisar a prescrição.','L']];
+const INTRO=['Estagiário(a), cadê você?? 😱','O fórum fechou e você ficou trancado(a) aí dentro! A saída tá lá em cima, mas só abre com as 6 tarefas feitas.','Toca na sala que estiver piscando e resolve a tarefa. Começa pelo <b>Gabinete do Relator</b>, aí embaixo à esquerda. Corre que eu tô cronometrando! ⏱'];
+
+// ========= ESTADO =========
+const KEY='fuga-do-forum-v3';
+function blank(){return{name:'',color:COLORS[0],start:0,step:0,pen:0,hints:0,errors:0,hinted:{},done:false,final:0,log:[]}}
+let S=(()=>{try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&typeof d==='object')return Object.assign(blank(),d)}catch(e){}return blank()})();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const app=document.getElementById('app');
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle=a=>{const b=a.slice();for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
+const mmss=s=>{s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+const hhmm=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+function buzz(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
+function elapsed(){return S.done?S.final:(S.start?(Date.now()-S.start)/1000:0)+S.pen}
+function rank(sec){for(const t of TITLES)if(sec<t[0])return t;return TITLES[TITLES.length-1]}
+
+// ========= PERSONAGEM ORIGINAL =========
+function chibi(color,id){
+  const rows=['...HHHHHH...','..HHHHHHHH..','..HSSSSSSH..','..SKKSSKKS..','..SKWSSKWS..','..SSSSSSSS..','...SSKKSS...','....SSSS....','..TTTWWTTT..','.TTCTWWTTTT.','.TTTCTTTTTT.','.STTTCTTTTS.','..TTTTCTTT..','..TTTTTCTT..','..TTTTTTTT..'];
+  const pal={H:'#3A2618',S:'#F1C9A5',K:'#07080C',W:'#FFFFFF',T:'#2A2E4A',C:color};
+  let px='';rows.forEach((r,y)=>[...r].forEach((c,x)=>{if(pal[c])px+=`<rect x="${2+x*3}" y="${4+y*3}" width="3" height="3" fill="${pal[c]}"/>`}));
+  return `<g ${id?`id="${id}"`:''} shape-rendering="crispEdges">
+   <rect x="8" y="52" width="24" height="3" fill="rgba(0,0,0,.45)"/>
+   <g class="legs"><rect x="11" y="49" width="6" height="5" fill="#15161C"/><rect x="23" y="49" width="6" height="5" fill="#15161C"/></g>
+   ${px}
+  </g>`;
+}
+
+// ========= TELA INICIAL =========
+function startScreen(){
+  app.innerHTML=`<div class="start"><div class="w">
+    <p class="kick">Processo Civil · Escape game</p>
+    <h1 class="logo">Fuga<span>do Fórum</span></h1>
+    <p class="muted" style="margin:0">O fórum fechou e você ficou trancado(a) lá dentro. Cumpra as 6 tarefas, destranque a saída e escape antes de todo mundo.</p>
+    <label class="kick" for="nick">Seu nome</label>
+    <input class="field" id="nick" maxlength="16" autocomplete="off" placeholder="ex.: Bia" value="${esc(S.name)}">
+    <span class="kick">Cor da sua faixa</span>
+    <div class="colors" role="group" aria-label="Cores">${COLORS.map(c=>`<button class="col" data-c="${c}" style="background:${c}" aria-pressed="${c===S.color}" aria-label="Cor ${c}"></button>`).join('')}</div>
+    <div class="preview"><svg viewBox="0 0 40 58" id="pv" aria-label="Seu personagem">${chibi(S.color)}</svg><span><b id="pvn">${esc(S.name||'Seu nome')}</b><br><span class="muted" style="font-size:14px">Estagiário(a) do fórum</span></span></div>
+    <div class="rules"><span>🗺️ Toque na sala que estiver <b>piscando</b> e seu personagem vai até lá.</span><span>🧩 Cada sala tem uma <b>tarefa</b>. Com as 6 feitas, a <b>saída</b> abre.</span><span>⏱ Vence quem escapar <b>mais rápido</b>. Erro: +10 s. Dica: +30 s.</span></div>
+    <button class="btn" id="go">Começar a fuga</button>
+  </div></div>`;
+  const nick=document.getElementById('nick');
+  nick.oninput=()=>document.getElementById('pvn').textContent=nick.value.trim()||'Seu nome';
+  app.querySelectorAll('.col').forEach(b=>b.onclick=()=>{S.color=b.dataset.c;app.querySelectorAll('.col').forEach(x=>x.setAttribute('aria-pressed',x===b));document.getElementById('pv').innerHTML=chibi(S.color)});
+  const go=()=>{const n=nick.value.trim();if(!n){nick.classList.remove('shake');void nick.offsetWidth;nick.classList.add('shake');nick.focus();return}S.name=n;S.start=Date.now();S.step=0;S.log=[];save();gameScreen(true)};
+  document.getElementById('go').onclick=go;nick.addEventListener('keydown',e=>{if(e.key==='Enter')go()});
+}
+
+// ========= JOGO =========
+const RW=146,RH=136,SPINE=180,HALL={x:180,y:606},EXIT={x:180,y:30};
+let pos={...HALL},clockInt,unread=0,busy=false;
+function door(i){const r=ROOMS[i];return{x:r.side==='L'?r.x+RW:r.x,y:r.y+RH-28}}
+function roomCenter(i){const r=ROOMS[i],d=door(i);return{x:r.side==='L'?d.x-30:d.x+30,y:d.y+12}}
+function place(pl,p){pl.setAttribute('transform',`translate(${p.x-25},${p.y-68}) scale(1.25)`)}
+const FLOOR={cofre:'url(#wood)',memoria:'url(#tile)',palavra:'url(#wood2)',impostor:'url(#tile2)',calendario:'url(#stone)',cartas:'url(#carpet)'};
+const FURN={
+ cofre:`<rect x="12" y="30" width="80" height="38" rx="4" fill="#7A4A26" stroke="#3B220F" stroke-width="2"/><rect x="12" y="30" width="80" height="6" rx="3" fill="#9A6234"/>
+  <rect x="22" y="40" width="18" height="22" rx="1" fill="#F4EFE2" transform="rotate(-8 31 51)"/><rect x="44" y="38" width="24" height="16" rx="2" fill="#1B1F2E"/><rect x="46" y="40" width="20" height="10" fill="#5BA7FF" opacity=".7"/>
+  <rect x="72" y="46" width="14" height="5" rx="2" fill="#5A3A1C" transform="rotate(-25 79 48)"/><circle cx="52" cy="84" r="11" fill="#2C2850" stroke="#15132B" stroke-width="2"/>
+  <rect x="104" y="26" width="34" height="34" rx="4" fill="#6A7186" stroke="#2A2D36" stroke-width="2.5"/><circle cx="121" cy="43" r="9" fill="#2A2D36"/><circle cx="121" cy="43" r="5" fill="#FFD447"/><path d="M121 35 v4" stroke="#FFD447" stroke-width="2"/>`,
+ memoria:`${[0,1,2,3].map(k=>`<g transform="translate(${36+k*26},24)"><rect width="22" height="44" rx="2" fill="#5A6178" stroke="#2A2D36" stroke-width="2"/><path d="M3 15 h16 M3 29 h16" stroke="#2A2D36" stroke-width="1.5"/><rect x="8" y="6" width="6" height="3" rx="1" fill="#C9CEDD"/><rect x="8" y="20" width="6" height="3" rx="1" fill="#C9CEDD"/><rect x="8" y="34" width="6" height="3" rx="1" fill="#C9CEDD"/></g>`).join('')}
+  <rect x="58" y="84" width="16" height="11" rx="1" fill="#F4EFE2" transform="rotate(18 66 90)"/><rect x="78" y="78" width="16" height="11" rx="1" fill="#F4EFE2" transform="rotate(-14 86 84)"/><rect x="96" y="92" width="16" height="11" rx="1" fill="#F4EFE2" transform="rotate(30 104 98)"/>
+  <rect x="112" y="78" width="26" height="20" rx="2" fill="#B07A3E" stroke="#5A3A1C" stroke-width="2"/><path d="M112 85 h26" stroke="#5A3A1C" stroke-width="1.5"/>`,
+ palavra:`<rect x="10" y="20" width="126" height="16" rx="2" fill="#4A2E18"/>${Array.from({length:20},(_,k)=>`<rect x="${13+k*6}" y="${22+(k%3)}" width="5" height="${12-(k%3)}" fill="${['#C8402F','#2F5DA8','#E8A317','#3FCF8E','#B98CFF','#F4EFE2'][k%6]}"/>`).join('')}
+  <rect x="10" y="40" width="16" height="60" rx="2" fill="#4A2E18"/>${Array.from({length:9},(_,k)=>`<rect x="${12+(k%2)}" y="${43+k*6}" width="${12-(k%2)}" height="5" fill="${['#2F5DA8','#E8A317','#C8402F','#3FCF8E'][k%4]}"/>`).join('')}
+  <circle cx="98" cy="64" r="26" fill="#FFD447" opacity=".12"/><rect x="58" y="54" width="62" height="34" rx="4" fill="#7A4A26" stroke="#3B220F" stroke-width="2"/><path d="M78 62 h22 v16 h-22 z M89 62 v16" fill="#F4EFE2" stroke="#C9C2B0" stroke-width="1"/><circle cx="110" cy="62" r="5" fill="#FFD447"/>`,
+ impostor:`<path d="M40 26 H138 V44 H58 V96 H40 Z" fill="#3B4A6B" stroke="#1E2740" stroke-width="2.5" stroke-linejoin="round"/><path d="M40 26 H138 V31 H40 Z" fill="#53648C"/>
+  <rect x="70" y="27" width="22" height="14" rx="2" fill="#1B1F2E"/><rect x="72" y="29" width="18" height="9" fill="#5BA7FF" opacity=".7"/>
+  <rect x="100" y="28" width="14" height="12" fill="#E8A317"/><rect x="102" y="26" width="14" height="12" fill="#3FCF8E"/><rect x="104" y="24" width="14" height="12" fill="#F4EFE2"/>
+  <circle cx="126" cy="35" r="4" fill="#C8402F"/><rect x="124" y="35" width="4" height="5" fill="#7A2318"/>
+  <rect x="90" y="64" width="20" height="26" rx="3" fill="#6A7186" stroke="#2A2D36" stroke-width="2"/><rect x="94" y="68" width="12" height="6" fill="#FF7A59"/><rect x="95" y="80" width="10" height="2" fill="#2A2D36"/>`,
+ calendario:`<circle cx="56" cy="62" r="30" fill="#F4EFE2" stroke="#2B2752" stroke-width="5"/>${Array.from({length:12},(_,k)=>{const a=k*Math.PI/6;return `<path d="M${(56+Math.sin(a)*23).toFixed(1)} ${(62-Math.cos(a)*23).toFixed(1)} L${(56+Math.sin(a)*27).toFixed(1)} ${(62-Math.cos(a)*27).toFixed(1)}" stroke="#2B2752" stroke-width="${k%3?1.5:3}"/>`}).join('')}
+  <path d="M56 62 L56 46" stroke="#1B1933" stroke-width="3.5" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 56 62" to="360 56 62" dur="24s" repeatCount="indefinite"/></path>
+  <path d="M56 62 L56 38" stroke="#C8402F" stroke-width="2" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 56 62" to="360 56 62" dur="3s" repeatCount="indefinite"/></path><circle cx="56" cy="62" r="3" fill="#1B1933"/>
+  <path d="M104 30 h22 l-8 14 l8 14 h-22 l8 -14 z" fill="#E8D6A8" stroke="#7A4A26" stroke-width="2.5" stroke-linejoin="round"/><path d="M109 34 h12 l-6 9 z" fill="#E8A317"/><path d="M110 56 h10 l-5 -6 z" fill="#E8A317"/>
+  <rect x="100" y="70" width="34" height="28" rx="2" fill="#F4EFE2" stroke="#2C4A80" stroke-width="2"/><rect x="100" y="70" width="34" height="7" fill="#2C4A80"/><path d="M106 84 l5 5 M111 84 l-5 5 M118 84 l5 5 M123 84 l-5 5" stroke="#C8402F" stroke-width="1.5"/>`,
+ cartas:`<rect x="34" y="22" width="92" height="20" rx="4" fill="#6E4A2C" stroke="#3B220F" stroke-width="2"/><rect x="34" y="22" width="92" height="5" rx="2" fill="#8E6238"/>
+  <circle cx="56" cy="18" r="6" fill="#2C2850"/><circle cx="80" cy="16" r="7" fill="#2C2850" stroke="#FFD447" stroke-width="1.5"/><circle cx="104" cy="18" r="6" fill="#2C2850"/>
+  <path d="M80 48 v8 M72 52 h16 M72 52 l-3 6 h6 z M88 52 l-3 6 h6 z" stroke="#FFD447" stroke-width="1.5" fill="none"/>
+  <path d="M26 74 Q80 54 134 74" stroke="#4A2E18" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M20 92 Q80 70 140 92" stroke="#4A2E18" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <rect x="72" y="100" width="16" height="12" rx="2" fill="#6E4A2C"/>`
+};
+function mapSVG(){
+  const rooms=ROOMS.map((r,i)=>{const d=door(i);const dx=r.side==='L'?RW-4:-2;
+    return `<g class="room" data-i="${i}" role="button" tabindex="0" aria-label="${esc(r.name)}">
+      <g transform="translate(${r.x},${r.y})">
+        <rect class="sh" x="3" y="6" width="${RW}" height="${RH}" rx="8" fill="#000" opacity=".45"/>
+        <rect class="fl" width="${RW}" height="${RH}" rx="8" fill="${FLOOR[r.id]}"/>
+        <rect width="${RW}" height="${RH}" rx="8" fill="url(#lamp)"/>
+        <rect width="${RW}" height="16" rx="8" fill="#332F63"/><rect y="8" width="${RW}" height="8" fill="#332F63"/><rect y="14" width="${RW}" height="3" fill="#221F45"/>
+        <text class="lb" x="${RW/2}" y="11.5" text-anchor="middle">${esc(r.name)}</text>
+        ${FURN[r.id]}
+        <rect class="wall" width="${RW}" height="${RH}" rx="8" fill="none" stroke="#0A0918" stroke-width="5"/>
+        <rect x="${dx}" y="${RH-44}" width="6" height="32" fill="${FLOOR[r.id]}"/>
+        <rect class="lk" width="${RW}" height="${RH}" rx="8" fill="#05040E"/>
+        <text class="lki" x="${RW/2}" y="${RH/2+14}" text-anchor="middle" font-size="26">🔒</text>
+        <rect class="hl" width="${RW}" height="${RH}" rx="8" fill="none" stroke="#FFD447" stroke-width="4"/>
+        <g class="ok"><rect width="${RW}" height="${RH}" rx="8" fill="#3FCF8E" opacity=".12"/><circle cx="${RW-15}" cy="30" r="11" fill="#3FCF8E" stroke="#0B1A16" stroke-width="2"/><path d="M${RW-21} 30 l4 4 l8 -8" fill="none" stroke="#0B1A16" stroke-width="2.6" stroke-linecap="round"/></g>
+        <g class="mark"><g class="bang"><circle cx="${RW/2}" cy="-8" r="12" fill="#FFD447" stroke="#15132B" stroke-width="2"/><text x="${RW/2}" y="-2.5" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="16" fill="#15132B">!</text></g></g>
+      </g></g>`}).join('');
+  return `<svg class="m" viewBox="0 0 360 640" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges" role="img" aria-label="Mapa do fórum">
+    <defs>
+      <pattern id="wood" width="36" height="10" patternUnits="userSpaceOnUse"><rect width="36" height="10" fill="#6B4528"/><rect width="36" height="1.2" fill="#55361E"/><rect x="22" width="1.2" height="10" fill="#55361E"/><rect x="4" y="4" width="10" height="1" fill="#7A5232" opacity=".6"/></pattern>
+      <pattern id="wood2" width="36" height="10" patternUnits="userSpaceOnUse"><rect width="36" height="10" fill="#5A3B26"/><rect width="36" height="1.2" fill="#432A18"/><rect x="12" width="1.2" height="10" fill="#432A18"/></pattern>
+      <pattern id="tile" width="18" height="18" patternUnits="userSpaceOnUse"><rect width="18" height="18" fill="#2A3355"/><rect width="9" height="9" fill="#313B62"/><rect x="9" y="9" width="9" height="9" fill="#313B62"/></pattern>
+      <pattern id="tile2" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#D9D2C2"/><rect width="16" height="1" fill="#BDB4A0"/><rect width="1" height="16" fill="#BDB4A0"/></pattern>
+      <pattern id="stone" width="22" height="22" patternUnits="userSpaceOnUse"><rect width="22" height="22" fill="#1F3A4A"/><rect width="22" height="1.2" fill="#152A36"/><rect width="1.2" height="22" fill="#152A36"/></pattern>
+      <pattern id="carpet" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#6B1F2E"/><circle cx="6" cy="6" r="1.4" fill="#8E2E40"/></pattern>
+      <pattern id="corr" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#1B2140"/><rect width="24" height="1" fill="#141933"/><rect width="1" height="24" fill="#141933"/></pattern>
+      <radialGradient id="lamp" cx=".5" cy=".45" r=".7"><stop offset="0" stop-color="#FFF4C8" stop-opacity=".10"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></radialGradient>
+      <radialGradient id="vig" cx=".5" cy=".5" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient>
+    </defs>
+    <rect width="360" height="640" fill="#0B0A1A"/>
+    <rect x="0" y="0" width="360" height="640" fill="url(#corr)" opacity=".35"/>
+    <rect x="${SPINE-26}" y="48" width="52" height="592" fill="url(#corr)"/>
+    <rect x="${SPINE-10}" y="56" width="20" height="584" fill="#7A2032"/><rect x="${SPINE-10}" y="56" width="2" height="584" fill="#C9A24A"/><rect x="${SPINE+8}" y="56" width="2" height="584" fill="#C9A24A"/>
+    <rect x="${SPINE-26}" y="48" width="52" height="592" fill="none" stroke="#0A0918" stroke-width="4"/>
+    <g id="exit">
+      <rect x="${SPINE-58}" y="0" width="116" height="50" rx="6" fill="#26224A" stroke="#0A0918" stroke-width="4"/>
+      <rect x="${SPINE-30}" y="16" width="60" height="32" rx="2" fill="#0A0918"/>
+      <g class="exitdoor"><rect x="${SPINE-29}" y="17" width="29" height="31" fill="#5A2A33" stroke="#2A1218" stroke-width="1.5"/><circle cx="${SPINE-5}" cy="33" r="1.8" fill="#C9A24A"/></g>
+      <g class="exitdoor2"><rect x="${SPINE}" y="17" width="29" height="31" fill="#5A2A33" stroke="#2A1218" stroke-width="1.5"/><circle cx="${SPINE+5}" cy="33" r="1.8" fill="#C9A24A"/></g>
+      <rect class="sign" x="${SPINE-24}" y="3" width="48" height="11" rx="2" fill="#3A0E14"/><text class="signt" x="${SPINE}" y="11.5" text-anchor="middle" font-family="Silkscreen,monospace" font-size="8" letter-spacing="1" fill="#FF5E5E">SAÍDA</text>
+    </g>
+    ${rooms}
+    <g transform="translate(0,572)"><rect x="96" y="8" width="44" height="18" rx="9" fill="#6B4528" stroke="#3B220F" stroke-width="2"/><circle cx="108" cy="4" r="6" fill="#2C2850"/><circle cx="260" cy="18" r="9" fill="#1F6B4F"/><circle cx="264" cy="14" r="6" fill="#2E8C66"/><circle cx="100" cy="52" r="8" fill="#1F6B4F"/><text x="${SPINE}" y="64" text-anchor="middle" font-family="Silkscreen,monospace" font-size="8" fill="#8C86AE" letter-spacing="1">ENTRADA</text></g>
+    <rect width="360" height="640" fill="url(#vig)" pointer-events="none"/>
+    <g id="pl">${chibi(S.color)}<text x="20" y="-4" text-anchor="middle" font-family="Silkscreen,monospace" font-size="7" fill="#fff" stroke="#07080C" stroke-width="2.5" paint-order="stroke">${esc(S.name)}</text></g>
+  </svg>`;
+}
+
+function gameScreen(first){
+  if(S.step>0)pos=roomCenter(Math.min(S.step,ROOMS.length)-1);else pos={...HALL};
+  app.innerHTML=`<div class="game">
+    <div class="hud"><div class="hrow"><div class="tasks"><i id="tb"></i><span id="tt">Tarefas concluídas</span></div><span class="clock" id="clk">00:00</span></div>
+      <div class="who"><b>${esc(S.name)}</b><span>·</span><span id="goal"></span></div></div>
+    <div class="map" id="map">${mapSVG()}</div>
+    <button class="phonebtn" id="pb" aria-label="Abrir conversa com a Dra. Ana">💬<span class="badge" id="bd" hidden>0</span></button>
+    <div class="hint-bar" id="hb"></div>
+  </div>`;
+  clearInterval(clockInt);clockInt=setInterval(()=>{const c=document.getElementById('clk');if(c)c.textContent=mmss(elapsed())},500);
+  place(document.getElementById('pl'),pos);refresh();
+  document.querySelectorAll('.room').forEach(g=>{const f=()=>tapRoom(+g.dataset.i);g.addEventListener('click',f);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f()}})});
+  document.getElementById('pb').onclick=()=>openChat();
+  if(first){openChat(true)}
+  else if(S.step>=ROOMS.length){exitRun()}
+}
+function refresh(){
+  const n=S.step,total=ROOMS.length;
+  document.getElementById('tb').style.width=(n/total*100)+'%';
+  document.getElementById('tt').textContent=`Tarefas concluídas ${n}/${total}`;
+  document.querySelectorAll('.room').forEach(g=>{const i=+g.dataset.i;g.classList.toggle('done',i<n);g.classList.toggle('cur',i===n);g.classList.toggle('locked',i>n);0});
+  const goal=document.getElementById('goal'),hb=document.getElementById('hb');
+  if(n<total){goal.textContent='Próxima: '+ROOMS[n].name;hb.innerHTML=`Toque no <b>${esc(ROOMS[n].name)}</b> ${ROOMS[n].ic} (piscando)`}
+  else{goal.textContent='Corra para a saída!';hb.innerHTML='A <b>saída</b> abriu! 🚪'}
+  const bd=document.getElementById('bd');bd.hidden=!unread;bd.textContent=unread;
+}
+function tapRoom(i){
+  if(busy)return;
+  if(i<S.step){toast('Tarefa já concluída ✓');return}
+  if(i>S.step){toast('Porta trancada 🔒 Faça a tarefa piscando primeiro');return}
+  walkTo(i).then(()=>openTask(i));
+}
+function pathTo(i){
+  const t=roomCenter(i),d=door(i),from={...pos};
+  const pts=[from];
+  if(Math.abs(from.x-SPINE)>2){const fd=S.step>0?door(Math.min(S.step,ROOMS.length)-1):null;if(fd){pts.push({x:fd.x,y:fd.y});pts.push({x:SPINE,y:fd.y})}}
+  pts.push({x:SPINE,y:d.y});pts.push(d);pts.push(t);return pts;
+}
+function walk(pts){
+  return new Promise(res=>{
+    busy=true;const pl=document.getElementById('pl');pl.classList.add('walk');
+    let seg=0,t0=null;const speed=260;
+    const lens=[];for(let k=1;k<pts.length;k++)lens.push(Math.hypot(pts[k].x-pts[k-1].x,pts[k].y-pts[k-1].y));
+    const step=ts=>{
+      if(t0===null)t0=ts;
+      while(seg<lens.length&&lens[seg]<1){seg++}
+      if(seg>=lens.length){pos={...pts[pts.length-1]};place(pl,pos);pl.classList.remove('walk');busy=false;res();return}
+      const dt=(ts-t0)/1000,f=Math.min(1,dt*speed/lens[seg]);
+      const a=pts[seg],b=pts[seg+1];pos={x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f};
+      place(pl,pos);
+      if(f>=1){seg++;t0=ts}
+      requestAnimationFrame(step);
+    };
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches){pos={...pts[pts.length-1]};place(pl,pos);busy=false;res();return}
+    requestAnimationFrame(step);
+  });
+}
+const walkTo=i=>walk(pathTo(i));
+
+// ========= WHATSAPP =========
+function logMsg(html,who){S.log.push({h:html,w:who||'in',t:hhmm()});save()}
+function notify(html){
+  document.querySelectorAll('.notif').forEach(n=>n.remove());
+  const n=document.createElement('button');n.className='notif';
+  n.innerHTML=`<span class="ap">💬</span><span><small>WhatsApp · agora</small><b>👩‍⚖️ Dra. Ana</b><span>${html}</span></span>`;
+  document.body.appendChild(n);buzz([20,40,20]);unread++;refresh();
+  n.onclick=()=>{n.remove();openChat()};
+  setTimeout(()=>n.remove(),6500);
+}
+async function openChat(intro){
+  document.querySelectorAll('.notif').forEach(n=>n.remove());
+  unread=0;if(document.getElementById('bd'))refresh();
+  const c=document.createElement('div');c.className='chat';
+  c.innerHTML=`<div class="top"><button class="bk" aria-label="Voltar ao mapa">←</button><span class="pic">👩‍⚖️</span><span><b>Dra. Ana · sua chefe</b><span id="cst">online</span></span></div><div class="th" id="cth"></div><div class="go"><button class="btn" id="cgo">${intro?'Bora! Ver o mapa 🗺️':'Voltar ao mapa'}</button></div>`;
+  document.body.appendChild(c);
+  const th=c.querySelector('#cth');
+  const put=m=>{const d=document.createElement('div');d.className='msg '+m.w;d.innerHTML=m.h+`<span class="t">${m.t}</span>`;th.appendChild(d);th.scrollTop=th.scrollHeight};
+  S.log.forEach(put);
+  const close=()=>c.remove();
+  c.querySelector('.bk').onclick=close;c.querySelector('#cgo').onclick=close;
+  if(intro&&!S.log.length){
+    const b=c.querySelector('#cgo');b.disabled=true;b.style.opacity=.5;
+    for(const m of INTRO){const st=c.querySelector('#cst');st.textContent='digitando…';const t=document.createElement('div');t.className='typing';t.innerHTML='<i></i><i></i><i></i>';th.appendChild(t);th.scrollTop=th.scrollHeight;await wait(Math.min(1300,450+m.length*12));t.remove();st.textContent='online';logMsg(m);put(S.log[S.log.length-1]);buzz(10)}
+    b.disabled=false;b.style.opacity=1;
+  }
+}
+function toast(msg){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2000)}
+function wrong(el,msg){S.pen+=PEN_WRONG;S.errors++;save();buzz([50,40,50]);toast((msg||'Não é isso!')+'  +10 s');if(el){el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake')}}
+
+// ========= PAINEL DE TAREFA =========
+function openTask(i){
+  const r=ROOMS[i];
+  const sh=document.createElement('div');sh.className='shade';
+  const p=document.createElement('div');p.className='panel';p.setAttribute('role','dialog');p.setAttribute('aria-label',r.title);
+  p.innerHTML=`<div class="w"><div class="ph"><span class="tg ${r.tg[0]}">Tarefa ${i+1}/6 · ${esc(r.tg[1])}</span><button class="x" aria-label="Fechar">✕</button></div>
+    <h2 class="ptitle">${r.ic} ${r.title}</h2><p class="q">${r.q}</p><div class="pb"></div>
+    <div class="hb"></div></div>`;
+  document.body.appendChild(sh);document.body.appendChild(p);
+  const close=()=>{sh.remove();p.remove()};
+  p.querySelector('.x').onclick=close;sh.onclick=close;
+  const hb=p.querySelector('.hb');
+  const showHint=()=>{hb.innerHTML=`<div class="hint">💡 ${esc(r.hint)}</div>`};
+  if(S.hinted[i])showHint();else{hb.innerHTML='<button class="hintb">💡 Pedir dica à Dra. Ana (+30 s)</button>';hb.querySelector('button').onclick=()=>{S.hinted[i]=true;S.pen+=PEN_HINT;S.hints++;save();showHint()}}
+  const done=async answer=>{
+    buzz([20,30,90]);burst();
+    hb.innerHTML=`<div class="okline">✅ Tarefa concluída!</div>`;
+    logMsg(esc(answer),'out');
+    await wait(1100);close();
+    S.step=i+1;save();refresh();
+    await wait(250);logMsg(r.ana);notify(r.ana);
+    if(S.step>=ROOMS.length)exitRun();
+  };
+  ({cofre,memoria,palavra,impostor,calendario,cartas})[r.id](p.querySelector('.pb'),done);
+}
+async function exitRun(){
+  const svg=document.querySelector('svg.m');if(!svg)return;
+  svg.classList.add('exitopen');burst(true);
+  await wait(900);
+  const last=door(ROOMS.length-1);
+  await walk([{...pos},last,{x:SPINE,y:last.y},{x:SPINE,y:EXIT.y+30},{x:SPINE,y:EXIT.y+6}]);
+  S.final=elapsed();S.done=true;save();clearInterval(clockInt);
+  await wait(400);result();
+}
+
+// --- enigmas
+function cofre(box,done){
+  const v=[0,0,0,0];
+  box.innerHTML=`<div class="safe" id="safe"><div class="wheels">${v.map((_,k)=>`${k===2?'<span class="wsep"></span>':''}<div class="wheel"><button data-k="${k}" data-d="1" aria-label="Aumentar dígito ${k+1}">▲</button><span class="d" id="d${k}">0</span><button data-k="${k}" data-d="-1" aria-label="Diminuir dígito ${k+1}">▼</button></div>`).join('')}</div><button class="btn" id="open">Abrir o cofre 🔓</button></div>`;
+  box.querySelectorAll('.wheel button').forEach(b=>b.onclick=()=>{const k=+b.dataset.k;v[k]=(v[k]+ +b.dataset.d+10)%10;box.querySelector('#d'+k).textContent=v[k];buzz(6)});
+  box.querySelector('#open').onclick=()=>{const safe=box.querySelector('#safe');if(v.join('')==='1505'){safe.classList.add('open');box.querySelector('#open').disabled=true;done('O código é 1505! 🔓')}else wrong(safe,'O cofre não abriu')};
+}
+function memoria(box,done){
+  const deck=shuffle(MEM.map((c,k)=>({c,pair:Math.floor(k/2),t:k%2===1})));
+  box.innerHTML=`<div class="memi"><b>Encontre os 6 pares</b><span id="mv">0 jogadas</span></div><div class="memleg"><span><i style="background:#FFE7A3"></i>cena</span><span><i style="background:#B9D3FF"></i>nome técnico</span></div><div class="mem">${deck.map((d,j)=>`<button class="card${d.t?' t':''}" data-j="${j}" aria-label="Carta virada"><span class="in"><span class="fc back"><b>?</b></span><span class="fc front"><span class="em">${d.c[0]}</span><span class="tx">${esc(d.c[1])}</span></span></span></button>`).join('')}</div>`;
+  let open=[],moves=0,found=0,lock=false;
+  box.querySelectorAll('.card').forEach(b=>b.onclick=()=>{
+    if(lock||b.classList.contains('up')||b.classList.contains('ok'))return;
+    b.classList.add('up');b.setAttribute('aria-label',deck[+b.dataset.j].c[1]);open.push(b);buzz(6);
+    if(open.length<2)return;
+    moves++;box.querySelector('#mv').textContent=moves+(moves===1?' jogada':' jogadas');
+    const [a,c]=open;open=[];
+    if(deck[+a.dataset.j].pair===deck[+c.dataset.j].pair){a.classList.replace('up','ok');c.classList.replace('up','ok');buzz(25);if(++found===6)setTimeout(()=>done(`Achei os 6 pares em ${moves} jogadas! 🧠`),350)}
+    else{lock=true;setTimeout(()=>{a.classList.remove('up');c.classList.remove('up');a.setAttribute('aria-label','Carta virada');c.setAttribute('aria-label','Carta virada');lock=false},850)}
+  });
+}
+function palavra(box,done){
+  const w='DIALETICIDADE';let tiles=shuffle(w.split(''));while(tiles.join('')===w)tiles=shuffle(w.split(''));
+  box.innerHTML=`<div class="slots" id="slots">${w.split('').map((_,k)=>`<button class="slot" data-p="${k}" aria-label="Posição ${k+1}"></button>`).join('')}</div><div class="tiles" style="margin-top:12px">${tiles.map((c,k)=>`<button class="tl" data-t="${k}">${c}</button>`).join('')}</div><button class="btn ghost" id="clr" style="margin-top:12px">Limpar</button>`;
+  const placed=[];
+  const render=()=>{box.querySelectorAll('.slot').forEach((s,k)=>{const t=placed[k];s.textContent=t!=null?tiles[t]:'';s.classList.toggle('f',t!=null)});box.querySelectorAll('.tl').forEach(t=>t.classList.toggle('used',placed.includes(+t.dataset.t)))};
+  box.querySelectorAll('.tl').forEach(t=>t.onclick=()=>{const k=+t.dataset.t;if(placed.includes(k))return;placed.push(k);buzz(5);render();
+    if(placed.length===w.length){if(placed.map(x=>tiles[x]).join('')===w){box.querySelectorAll('button').forEach(x=>x.disabled=true);done('DIALETICIDADE! ✍️')}else{wrong(box.querySelector('#slots'),'Ainda não é essa palavra');setTimeout(()=>{placed.length=0;render()},350)}}});
+  box.querySelectorAll('.slot').forEach(s=>s.onclick=()=>{const p=+s.dataset.p;if(placed[p]==null)return;placed.splice(p,1);render()});
+  box.querySelector('#clr').onclick=()=>{placed.length=0;render()};
+}
+function impostor(box,done){
+  box.innerHTML=`<div class="sent"><span class="sh">Sentença · fls. 43</span>${LINES.map((l,k)=>`<button class="ln" data-k="${k}"><i>${k+1}</i><span>${esc(l)}</span></button>`).join('')}</div><div id="vic" style="margin-top:10px"></div>`;
+  let found=false;
+  box.querySelectorAll('.ln').forEach(b=>b.onclick=()=>{
+    if(found)return;
+    if(+b.dataset.k===3){found=true;b.classList.add('yes');buzz(25);
+      const vic=box.querySelector('#vic');vic.innerHTML=`<p class="q" style="margin:0 0 8px"><b>Achou o impostor! Qual é o defeito?</b></p><div class="vgrid">${VICES.map((v,j)=>`<button class="vbtn" data-j="${j}"><span>${v[0]}</span>${v[1]}</button>`).join('')}</div>`;
+      vic.querySelectorAll('.vbtn').forEach(v=>v.onclick=()=>{if(+v.dataset.j===1){v.classList.add('ok');vic.querySelectorAll('.vbtn').forEach(x=>x.disabled=true);done('Frase 4. É contradição! 🔀')}else wrong(v,'Não é esse defeito')});
+      vic.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }else{b.classList.add('no');setTimeout(()=>b.classList.remove('no'),500);wrong(null,'Essa frase é inocente 😇')}
+  });
+}
+function calendario(box,done){
+  box.innerHTML=`<div class="cal"><div class="ch"><span>📅 Prazo para apelar</span><span>15 dias úteis</span></div><div class="days">${Array.from({length:15},(_,k)=>`<button class="dayb ${k<4?'past':''}" data-d="${k+1}" aria-label="Dia ${k+1}${k<4?', já corrido':''}">${k+1}</button>`).join('')}</div></div>`;
+  box.querySelectorAll('.dayb').forEach(b=>b.onclick=()=>{const d=+b.dataset.d;
+    if(d===1){box.querySelectorAll('.dayb').forEach(x=>{x.classList.remove('past');x.disabled=true});b.classList.add('hit');done('Recomeça do dia 1! ↺')}
+    else{b.classList.add('miss');setTimeout(()=>b.classList.remove('miss'),600);wrong(null,d===5?'Isso seria pause (suspensão). Embargos fazem restart!':'Não é esse dia')}});
+}
+function cartas(box,done){
+  let k=0;
+  box.innerHTML=`<div class="deck" id="deck"></div><div class="swb" style="margin-top:10px"><button class="l" id="bl">⬅ Embargos</button><button class="r" id="br">Agravo interno ➡</button></div><div class="swc" id="sc" style="margin-top:6px"></div>`;
+  const deck=box.querySelector('#deck');
+  function draw(){
+    if(k>=CARDS.length){box.querySelectorAll('.swb button').forEach(b=>b.disabled=true);done('Acertei as 5 cartas! 🚪');return}
+    box.querySelector('#sc').textContent=`Carta ${k+1} de ${CARDS.length}`;
+    deck.innerHTML=(k+1<CARDS.length?`<div class="sw behind"><div class="ct">${esc(CARDS[k+1][0])}</div></div>`:'')+`<div class="sw" id="top"><span class="st l">EMBARGOS</span><span class="st r">AGRAVO</span><div class="ct">${esc(CARDS[k][0])}</div></div>`;
+    const c=deck.querySelector('#top');let x0=null,dx=0;
+    c.addEventListener('pointerdown',ev=>{x0=ev.clientX;dx=0;c.classList.add('drag');try{c.setPointerCapture(ev.pointerId)}catch(e){}});
+    c.addEventListener('pointermove',ev=>{if(x0===null)return;dx=ev.clientX-x0;c.style.transform=`translateX(${dx}px) rotate(${dx/18}deg)`;c.querySelector('.st.l').style.opacity=dx<-20?1:0;c.querySelector('.st.r').style.opacity=dx>20?1:0});
+    const end=()=>{if(x0===null)return;x0=null;c.classList.remove('drag');if(Math.abs(dx)>80)decide(dx<0?'L':'R');else{c.style.transform='';c.querySelectorAll('.st').forEach(l=>l.style.opacity=0)}};
+    c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);
+  }
+  function decide(dir){
+    const c=deck.querySelector('#top');if(!c||k>=CARDS.length)return;
+    if(dir===CARDS[k][1]){c.style.transform=`translateX(${dir==='L'?-480:480}px) rotate(${dir==='L'?-22:22}deg)`;buzz(15);k++;setTimeout(draw,250)}
+    else{c.style.transform='';c.querySelectorAll('.st').forEach(l=>l.style.opacity=0);wrong(c,dir==='L'?'Aqui não são embargos':'Aqui não é agravo interno')}
+  }
+  box.querySelector('#bl').onclick=()=>decide('L');box.querySelector('#br').onclick=()=>decide('R');
+  draw();
+}
+
+// ========= RESULTADO =========
+function result(){
+  const t=rank(S.final);
+  const d=document.createElement('div');d.className='res';
+  d.innerHTML=`<div class="w">
+    <svg viewBox="0 0 40 58" width="90" height="130" style="align-self:center" aria-label="Seu personagem">${chibi(S.color)}</svg>
+    <p class="kick" style="color:var(--mint)">Você escapou do fórum!</p>
+    <div class="time">${mmss(S.final)}</div>
+    <div class="rank">${t[2]} ${t[1]}</div><p class="muted" style="margin:0">${esc(S.name)}</p>
+    <div class="stats"><div><b>6/6</b><span>tarefas</span></div><div><b>${S.errors}</b><span>erros (+10 s)</span></div><div><b>${S.hints}</b><span>dicas (+30 s)</span></div></div>
+    <div class="pod">🧍 <b>Pódio:</b> fique de pé. Quando o telão chamar um tempo menor que o seu, sente. Quem sobrar, mostra esta tela!</div>
+    <div class="ladder">${TITLES.map(x=>`<div class="${x===t?'me':''}"><span>${x[2]} ${x[1]}</span><span>${x[0]>1e8?'7 min ou mais':'até '+mmss(x[0]-1)}</span></div>`).join('')}</div>
+    <button class="link" id="again" style="align-self:center">jogar de novo</button></div>`;
+  document.body.appendChild(d);burst(true);setTimeout(()=>burst(true),500);
+  d.querySelector('#again').onclick=()=>{const n=S.name,c=S.color;S=blank();S.name=n;S.color=c;save();d.remove();pos={...HALL};startScreen()};
+}
+
+// confete
+const cv=document.getElementById('fx'),cx=cv.getContext('2d');let parts=[],raf=null;
+function size(){cv.width=innerWidth*devicePixelRatio;cv.height=innerHeight*devicePixelRatio}size();addEventListener('resize',size);
+function burst(big){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const dp=devicePixelRatio,cols=['#FFD447','#4FE0A8','#86B6FF','#FF7A59','#FF8FC8'],n=big?140:50;
+  for(let i=0;i<n;i++){const a=-Math.PI/2+(Math.random()-.5)*2.2,v=(6+Math.random()*10)*dp;parts.push({x:cv.width/2,y:cv.height*.6,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:(3+Math.random()*4)*dp,c:cols[i%5],l:60+Math.random()*40,rot:Math.random()*6})}
+  if(!raf)tick();
+}
+function tick(){cx.clearRect(0,0,cv.width,cv.height);parts=parts.filter(p=>p.l>0);parts.forEach(p=>{p.vy+=.4*devicePixelRatio;p.vx*=.98;p.x+=p.vx;p.y+=p.vy;p.l--;p.rot+=.2;cx.save();cx.translate(p.x,p.y);cx.rotate(p.rot);cx.fillStyle=p.c;cx.globalAlpha=Math.min(1,p.l/25);cx.fillRect(-p.r,-p.r/2,p.r*2,p.r);cx.restore()});raf=parts.length?requestAnimationFrame(tick):null;if(!raf)cx.clearRect(0,0,cv.width,cv.height)}
+
+// início
+if(S.done){result()}
+else if(S.start&&S.name)gameScreen(false);
+else startScreen();
+})();
+</script>
+
+</body></html>
